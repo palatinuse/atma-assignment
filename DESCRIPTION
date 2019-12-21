@@ -1,0 +1,10 @@
+Package: assignment
+Type: Package
+Title: ATMA Interview Assignment
+Version: 0.1.0
+Author: Endre Palatinus
+Maintainer: Endre Palatinus <palatinuse@gmail.com>
+Description: Simple RESTful API for analyzing material flow.
+License: file LICENCE
+Encoding: UTF-8
+LazyData: true
