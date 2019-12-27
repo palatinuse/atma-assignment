@@ -131,8 +131,13 @@ plotLocationHeatMap = function() {
 #' Function for loading the sample data.
 #' @get /init
 loadSampleData = function() {
+  fileName = "data/readEvents.csv"
+  if (!file.exists("data/readEvents.csv")) {
+    fileName = "/root/app/data/readEvents.csv"
+  }
+
   events = read.csv2(header = F, stringsAsFactors = F, numerals = "no.loss",
-                     file = "data/readEvents.csv")
+                     file = fileName)
 
   names(events) = c("timestamp", "item", "process", "location", "run", "readpoint")
   events$timestamp %<>% ymd_hms() # NOTE: loosing millisecond precision here
@@ -153,7 +158,12 @@ loadSampleData = function() {
 #' @get /initall
 loadAll = function() {
   loadSampleData()
-  itemFlow <<- readRDS(file = "data/itemFlow.rds")
+
+  fileName = "data/itemFlow.rds"
+  if (!file.exists("data/itemFlow.rds")) {
+    fileName = "/root/app/data/itemFlow.rds"
+  }
+  itemFlow <<- readRDS(file = fileName)
 }
 
 ### Trigger the analysis ###
