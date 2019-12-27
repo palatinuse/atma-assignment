@@ -22,5 +22,5 @@ COPY R/plumber.R /root/app/plumber.R
 COPY data/readEvents.csv /root/app/data/readEvents.csv
 COPY data/itemFlow.rds /root/app/data/itemFlow.rds
 
-# ENTRYPOINT ["R", "-e", "pr <- plumber::plumb(commandArgs()[4]); pr$run(host='0.0.0.0', port=8000)"]
+ENTRYPOINT ["R", "-e", "pr <- plumber::plumb(commandArgs()[4]); pr$run(host='0.0.0.0', port=8000, swagger = TRUE)"]
 CMD ["/root/app/plumber.R"]
