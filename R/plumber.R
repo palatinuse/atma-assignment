@@ -1,3 +1,10 @@
+library(plumber)
+
+#* @apiTitle ATMA Implementation Assignment - Endre Palatinus
+#* @apiDescription Your task is to (1) implement a (rudimentary) system to analyze this track and trace sample and (2) build a REST API that can ingest data in this format and trigger the analysis on the fly.
+#* @apiVersion 1.0
+
+
 # Libraries used:
 library(igraph)
 library(ggplot2)
@@ -14,13 +21,13 @@ itemFlow = tribble(~item, ~source, ~target, ~begin, ~end, ~duration, ~readpoint)
 
 
 
-#' Inserting a new event.
+#' Insert a new event
 #' @post /events
 #' @param timestamp Date and time
 #' @param item Unique item identifier
 #' @param location Location identifier
 #' @param readpoint Readpoint identifier
-insertEvent = function(req, timestamp, item, location, readpoint) {
+insertEvent = function(req, timestamp = lubridate::now(), item, location, readpoint) {
 
   events <<- add_row(events,
                      timestamp = ymd_hms(timestamp),
@@ -42,6 +49,43 @@ getEvents = function(id) {
 #' @param id:character the ID of the item
 getItemFlow = function(id) {
   filter(itemFlow, item == id)
+}
+
+#' Show the transition probabilities for a given location
+#' @get /locations/<id>/prob
+#' @param id:character the ID of the location
+#' @serializer htmlwidget
+getTransitionProbs = function(id) {
+  incoming = itemFlow %>%
+    filter(target == id) %>%
+    group_by(source) %>%
+    count() %>%
+    ungroup() %>%
+    mutate(probability = n / sum(n))
+
+  outgoing = itemFlow %>%
+    filter(source == id) %>%
+    group_by(target) %>%
+    count() %>%
+    ungroup() %>%
+    mutate(probability = n / sum(n))
+
+  probs = bind_rows(incoming %>% rename(location = source) %>% mutate(direction = "incoming"),
+                    outgoing %>% rename(location = target) %>% mutate(direction = "outgoing"))
+  probs$direction %<>% as.factor()
+  probs$location %<>% as.factor()
+
+  if (nrow(probs) == 0) {
+    return(NULL)
+  }
+
+  g = ggplot(probs, aes(x = location, y = probability, fill = direction)) +
+    geom_bar(stat = 'identity') +
+    facet_wrap(~direction) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    labs(title = paste0("Transition probabilites for location ", id))
+
+  ggplotly(g)
 }
 
 
@@ -111,6 +155,7 @@ loadSampleData = function() {
 
   names(events) = c("timestamp", "item", "process", "location", "run", "readpoint")
   events$timestamp %<>% ymd_hms() # NOTE: loosing millisecond precision here
+  events$timestamp %<>% as.numeric()
   events$location %<>% as.factor()
   events$readpoint %<>% as.factor()
   events$item %<>% as.factor()
@@ -123,11 +168,26 @@ loadSampleData = function() {
   sprintf("[+] Successfully loaded %d rows from the sample dataset.", nrow(events))
 }
 
+#' Function for loading the sample data and the pre-calculated item flow as well.
+#' @get /initall
+loadAll = function() {
+  loadSampleData()
+  itemFlow <<- readRDS(file = "data/itemFlow.rds")
+}
+
 ### Trigger the analysis ###
 
 #' Calculate item flow from the events log.
 #' @get /itemflow
-calculateItemFlow = function() {
+function() {
+
+  itemFlow <<- calculateItemFlow(events)
+}
+
+#' Function for calculating the event flow of the items.
+#' @param events the event log
+#' @return the list of transitions for each item
+calculateItemFlow = function(events) {
 
   events %<>% arrange(item, timestamp)
 
@@ -143,12 +203,11 @@ calculateItemFlow = function() {
         item = events$item[i],
         source = events$location[i - 1], target = events$location[i],
         begin = events$timestamp[i - 1], end = events$timestamp[i],
+        #duration = difftime(events$timestamp[i], events$timestamp[i - 1], units = "secs"),
         duration = events$timestamp[i] - events$timestamp[i - 1],
         readpoint = events$readpoint[i])
     }
   }
-
-  itemFlow <<- itemFlow
 
   itemFlow
 }
