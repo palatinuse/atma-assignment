@@ -13,6 +13,8 @@ library(lubridate)
 library(magrittr)
 library(dplyr)
 library(tibble)
+library(RColorBrewer)
+
 
 # Global variables:
 
@@ -49,6 +51,24 @@ getEvents = function(id) {
 #' @param id:character the ID of the item
 getItemFlow = function(id) {
   filter(itemFlow, item == id)
+}
+
+#' Plot the item flow of a given item. The edge width is relative to the dwell time, and the edge color shows the readpoint.
+#' @get /items/<id>/itemflowplot
+#' @param id:character the ID of the item
+#' @png
+getItemFlowPlot = function(id) {
+  data = itemFlow %>% filter(item == id)
+  itemFlowG = graph.edgelist(as.matrix(data %>% select(source, target)), directed = T)
+  itemFlowG = set_edge_attr(graph = itemFlowG, name = "duration", value = data$duration)
+
+  coul = brewer.pal(n_distinct(data$readpoint), "Set1")
+  my_color <- coul[as.numeric(as.factor(data$readpoint))]
+
+  plot(itemFlowG, edge.width = log(1 + log(1 + data$duration)), edge.color = my_color)
+  legend("bottomleft", legend=levels(as.factor(data$readpoint)), col = coul , bty = "n",
+         pch = 20 , pt.cex = 3, cex = 1.0, text.col = coul, horiz = FALSE, inset = c(0.0, 0.0))
+
 }
 
 #' Show the transition probabilities for a given location
@@ -92,7 +112,7 @@ getTransitionProbs = function(id) {
 ### Plotting functions ###
 
 #' Plot location heat-map.
-#' @get /locations/plot
+#' @get /locations
 #' @serializer htmlwidget
 plotLocationHeatMap = function() {
   itemFlowStats = itemFlow %>%
@@ -104,45 +124,6 @@ plotLocationHeatMap = function() {
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
   ggplotly(g)
 }
-
-#' Plot out item flow of a given item
-#' @param itemID If provided, filter the data to only this item
-#' @get /itemflow/plot
-#' @png
-plotItemFlow = function(itemID){
-
-  data = itemFlowStats
-  # Filter if the species was specified
-  if (!missing(itemID)) {
-    data = itemFlow %>% filter(item == itemID)
-    itemFlowG = graph.edgelist(as.matrix(data %>% select(source, target)), directed = T)
-    itemFlowG = set_edge_attr(graph = itemFlowG, name = "duration", value = data$duration)
-  } else {
-    itemFlowG = graph.edgelist(as.matrix(itemFlowStats %>% select(source, target)), directed = T)
-  }
-
-  plot(itemFlowG, edge.width = itemFlow$duration) # layout = layout_as_tree(itemFlowG),
-}
-
-#' Plot out item flow of a given item
-#' @param itemID If provided, filter the data to only this item
-#' @get /itemflow/plot/interactive
-#' @serializer htmlwidget
-plotItemFlowInteractive = function(itemID){
-
-  data = itemFlowStats
-  # Filter if the species was specified
-  if (!missing(itemID)) {
-    data = itemFlow %>% filter(item == itemID)
-    itemFlowG = graph.edgelist(as.matrix(data %>% select(source, target)), directed = T)
-    itemFlowG = set_edge_attr(graph = itemFlowG, name = "duration", value = data$duration)
-  } else {
-    itemFlowG = graph.edgelist(as.matrix(itemFlowStats %>% select(source, target)), directed = T)
-  }
-
-  plot(itemFlowG, edge.width = itemFlow$duration) # layout = layout_as_tree(itemFlowG),
-}
-
 
 
 ### Load sample data ###
@@ -178,7 +159,7 @@ loadAll = function() {
 ### Trigger the analysis ###
 
 #' Calculate item flow from the events log.
-#' @get /itemflow
+#' @get /calculate/itemflow
 function() {
 
   itemFlow <<- calculateItemFlow(events)
