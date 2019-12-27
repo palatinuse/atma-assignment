@@ -6,8 +6,8 @@ This is a project I have created as part of the interview process at ATMA.
 
 - Clone this git repository. 
 - Build the docker container: ```docker build . --rm -t atma/assignment```
-- Run the docker container: ```docker run -p 80:8000 atma/assignment```
-- Visit the URL printed by docker to explore the API
+- Run the docker container: ```sudo docker run -p 8000:8000 atma/assignment```
+- Visit the following URL to explore the API: ```localhost:8000/__swagger__```
 
 # Implementation details
 
