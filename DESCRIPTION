@@ -8,3 +8,5 @@ Description: Simple RESTful API for analyzing material flow.
 License: file LICENCE
 Encoding: UTF-8
 LazyData: true
+Suggests: 
+    testthat (>= 2.1.0)
