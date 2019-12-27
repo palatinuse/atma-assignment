@@ -12,6 +12,7 @@ RUN apt-get install -y --no-install-recommends \
                 r-cran-dplyr \
                 r-cran-tibble \
                 r-cran-testthat \
+                r-cran-rcolorbrewer \
                 pandoc \
                 pandoc-citeproc
 
